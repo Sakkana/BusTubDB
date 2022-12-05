@@ -1,5 +1,10 @@
 # BusTubDB
-Recording the learning of CMU15445 with code in private
+Recording the learning of CMU15445 with code in private.\
+**Do not post your project on a public Github repository.**\
+Andy 老师和助教们幸苦做课程实验代码，还给我们 NON-CMU 的学生开放在线评测，不希望我们把代码放出来，不能辜负了他们的一片好心。\
+开一个 private 自己提交，开一个 public 记录学习过程。\
+况且 CMU 的学生那么强，我个人代码还有许多需要学习、优化的地方。（CMU 的学生应该看不懂中文hhh）\
+加油！
 
 ---
 ### Lab 1 Buffer Pool
