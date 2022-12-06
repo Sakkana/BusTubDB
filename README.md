@@ -51,7 +51,7 @@ if target_bucket is full:
 For Database Disk Buffering</a> \
 <a href="http://it.cha138.com/tech/show-252225.html">深入理解关系型数据库</a>
 
-##### #3 Buffer Pool Manager Instance
+##### #3 Buffer Pool Manager Instance (22.12.5 - 22.12.6)
 这一块就根据缓冲池的工作逻辑模拟就好了，需要实现前面写的两个组件：HashTable 和 LRUKReplacer。\
 有一个坑点就是，UnpinPgImp 会传入一个参数 is_dirty，不可以直接把这个 bool 赋值给页面的脏位，\
 因为一个页面可能并发地被多个线程 Unpin，因此对于每个线程来说该页是否 dirty 是由他们自己决定的。\
@@ -77,5 +77,19 @@ if free_list.empty == false:  // 首先考虑从空闲链表拿一个空的来�
   else:
     return -1
 ```
+
+> 马上就要期末考试了，还没复习\
+唉...
+
+### lab2 B+ Tree Index
+
+##### Task #1 B+Tree Pages
+
+##### Task #2 B+Tree Data Structure (Insertion, Deletion, Point Search)
+
+##### Task #3 Index Iterator
+
+##### Task #4 Concurrent Index
+
 
 
