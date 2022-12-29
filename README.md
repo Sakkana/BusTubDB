@@ -100,7 +100,7 @@ if free_list.empty == false:  // 首先考虑从空闲链表拿一个空的来�
 
 #### checkpoint 2
 
-**Index Iterator** (22.12.28)
+**Index Iterator** (22.12.28)\
 这部分需要在 B_Plus_Tree 类中完善 Begin 和 End 函数，这俩接口需要返回一个迭代器类，即 IndexIterator 类。\
 Begin 接口包含有参数版本和无参数版本，其中有参数版本会从指定的 Key 开始 Iterate，无参数版本默认从第一个元素开始。\
 在 IndexIterator 类中完善相应的运算符重载就好了，需要自己添加成员变量。\
