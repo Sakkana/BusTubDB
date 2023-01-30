@@ -109,6 +109,10 @@ Begin 接口包含有参数版本和无参数版本，其中有参数版本会�
 由于 B+ 树中元素都在叶子结点，因此遍历所有的元素就是在遍历所有的叶子结点，因此涉及不同页面的切换，因此需要一个 BUfferPool。\
 有了这三个成员变量就差不多了。
 
-**Concurrent**\
-书上对于索引结构的并发控制介绍了 `蟹行协议 (Crabbing Protocal)` 和 `B-link 树封锁协议 (B-link-tree locking protocol)`。
+**Concurrent** (23.1.3, 23.1.11)\
+书上对于索引结构的并发控制介绍了 `蟹行协议 (Crabbing Protocal)` 和 `B-link 树封锁协议 (B-link-tree locking protocol)`。\
+先加把大锁混过去吧。
+
+### lab3 Query Execution
+
 
