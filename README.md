@@ -194,7 +194,65 @@ bustub> EXPLAIN (o,s) SELECT * FROM t2 ORDER BY v3;
 === OPTIMIZER ===
 IndexScan { index_oid=0 } | (t2.v3:INTEGER, t2.v4:INTEGER)
 ```
-
+  
+还有一个问题就是，在 Insert 算子中，除了直接插入 table 之外，还需要更新所有和这个表关联的 index。\
+要注意，这里插入 index 的并不是下层送上来的 tuple 了，和前面直接插入 table 的不是一个东西！\
+原因在于，每张表都有自己的 schema，可以理解为抽象的表结构，\
+与此同时，这张表上建立的索引，都有自己的 index schema，\
+因为 BusTub 不支持聚簇索引，因此都是非聚簇索引，除了主键之外就是 rid 了。\
+因此，我们只需要在 index 中插入 <key, rid> 就可以了。\
+但是每个 index 的 key 都只是原表中的一个 column，因此需要拿到 index_schema，\
+根据这个信息从一个完整的 table tuple 精炼出来一个 index key，于是就用到了 tuple->KeyFromTuple。\
+```c++
+auto schema = exec_ctx_->GetCatalog()->GetTable(plan_->table_oid_)->schema_;
+auto table_name = exec_ctx_->GetCatalog()->GetTable(plan_->TableOid())->name_;
+auto indexes = exec_ctx_->GetCatalog()->GetTableIndexes(table_name);
+  
+if (!indexes.empty()) {
+  BUSTUB_ASSERT(indexes.size(), "InsertExecutor::Next: indexes is empty!");
+  for (auto &it : indexes) {
+    auto key = tuple->KeyFromTuple(schema, it->key_schema_, it->index_->GetKeyAttrs());
+    it->index_->InsertEntry(key, *rid, exec_ctx_->GetTransaction());
+  }
+}  
+```
+  
+KeyFromTuple 是一个用来从完整 tuple 提炼精简版 tuple 的函数。
+```c++
+auto Tuple::KeyFromTuple(const Schema &schema, const Schema &key_schema, const std::vector<uint32_t> &key_attrs)
+    -> Tuple {
+  std::vector<Value> values;
+  values.reserve(key_attrs.size());
+  for (auto idx : key_attrs) {
+    values.emplace_back(this->GetValue(&schema, idx));
+  }
+  return {values, &key_schema};
+}  
+```
+  
+GetValue 是 Tuple 类的一个成员函数，用来从当前 tuple 提取指定列上的数据。
+```c++
+auto Tuple::GetValue(const Schema *schema, const uint32_t column_idx) const -> Value {
+  assert(schema);
+  assert(data_);
+  const TypeId column_type = schema->GetColumn(column_idx).GetType();
+  const char *data_ptr = GetDataPtr(schema, column_idx);
+  return Value::DeserializeFrom(data_ptr, column_type);
+}
+```
+  
+经过实验，打日志调试，发现确实如此。\
+参考如下语句：
+```sql
+set force_optimizer_starter_rule=yes;
+create table t1(v1 int, v2 int);
+insert into t1 values (1, 50), (2, 40), (4, 20), (5, 10), (3, 30);
+create index t1v1 on t1(v1);
+create index t1v2 on t1(v2);
+insert into t1 values (6, 0), (7, -10);
+```
+  
+这里建立了两个 index：`t1v1` 和 `t1v2`，日志中打印了以下执行 KeyFromTuple 时，传入的 `key_attrs` 的 size 为 1，并且名字恰恰是 v1 和 v2。
 
 #### #2: Aggregation and Join Executors
 #### #3: Sort + Limit Executors and Top-N Optimization
