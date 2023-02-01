@@ -9,7 +9,7 @@ Andy 老师和助教们幸苦做课程实验代码，还给我们 NON-CMU 的学
 ---
 ### Lab 1 Buffer Pool
 
-##### #1 Extendible Hash Table (22.11.30 - 22.12.1)
+#### #1 Extendible Hash Table (22.11.30 - 22.12.1)
 实现一个可扩展哈希表，支持 <k, v> 对的插入、删除、查询以及桶的拆分，扩容。\
 没有实现桶的收缩，桶的合并。\
 整个数据结构类似页表，通过一个中间层（目录）统一索引某个 k 的哈希值对应的 v 所在的桶。\
@@ -34,7 +34,7 @@ if target_bucket is full:
 新多出来的一半目录只需要复制原来的一半，因为桶分裂只针对该元素插入的桶，其他的桶深度没有变化。\
 因此只需要重新分配目录中指向该桶的指针。
 
-##### #2 LRU-K Replacement Policy (22.12.4)
+#### #2 LRU-K Replacement Policy (22.12.4)
 优化版本的朴素 LRK 算法。\
 其实普通的 LRU 可以看作 LRU-1。\
 这个 LRU-K 便是访问多少次之后才淘汰。\
@@ -51,7 +51,7 @@ if target_bucket is full:
 For Database Disk Buffering</a> \
 <a href="http://it.cha138.com/tech/show-252225.html">深入理解关系型数据库</a>
 
-##### #3 Buffer Pool Manager Instance (22.12.5 - 22.12.6)
+#### #3 Buffer Pool Manager Instance (22.12.5 - 22.12.6)
 这一块就根据缓冲池的工作逻辑模拟就好了，需要实现前面写的两个组件：HashTable 和 LRUKReplacer。\
 有一个坑点就是，UnpinPgImp 会传入一个参数 is_dirty，不可以直接把这个 bool 赋值给页面的脏位，\
 因为一个页面可能并发地被多个线程 Unpin，因此对于每个线程来说该页是否 dirty 是由他们自己决定的。\
@@ -115,4 +115,88 @@ Begin 接口包含有参数版本和无参数版本，其中有参数版本会�
 
 ### lab3 Query Execution
 
+#### #1: Access Method Executors (2023.1.30 - 2023.2.1)
+完成最基础的对于 `SeqScan`, `Insert`, `Delete`, `IndexScan` 的支持。\
+这部分就和填空题一样，parser, binder, planner, optimizer 都已经写好了，\
+只需要通读一遍查询引擎的源码，了解一下工作流程就可以写了。
+
+只需要完成各个算子的构造函数，Init() 和 Next()。\
+这种模式也被称为火山模型，根算子调用下层的 Next 方法，下层算子的 Next 方法也调用再下一层算子的 Next 方法，\
+如果是 Insert 语句，则最底层的 Value 算子每次产生一个实体数据，吐给上层算子，执行一次插入。\
+然后 Insert 算子再次调用 Value 算子的 Next，周而复始。
+
+这里踩了一些坑，一部分是 IndexScan 中获取索引实体，这里使用了 dynamic_cast，\
+每个 index 都被 catalog 所管理，每个 index 都被一个 unique_ptr 套着，\
+unordered_map 中有着 index_oid 和 unique_ptr<IndexInfo> 的一一映射，可以快速找到某个 id 对应的 index。
+下面节选自 `catalog.h`
+```c++
+/**
+ * Map index identifier -> index metadata.
+ *
+ * NOTE: that `indexes_` owns all index metadata.
+ */
+ 
+std::unordered_map<index_oid_t, std::unique_ptr<IndexInfo>> indexes_;
+```
+这里资源的获取后续可以再仔细研究一下，通俗来讲就是直接获取该索引所对应的指针。\
+为什么要用 deynamic_cast？static_cast 不行吗？\
+之前自己是用一个 shared_ptr 来接收，后来才发现这个 index 是个 unique_ptr，\
+不能同时被多个对象持有，因此换成 unique_ptr，\
+但是这样的话问题又来了，使用 std::move 移动对象后，catalog 还管理个寂寞？\
+因此直接抄了指导书上的那条语句（本来想自己写写看，隧失败
+```c++
+tree_ = dynamic_cast<BPlusTreeIndexForOneIntegerColumn *>(index_info_->index_.get())
+```
+
+下面是这五个算子的执行流程。
+##### SeqScan
+```
+bustub> CREATE TABLE t1(v1 INT, v2 VARCHAR(100));
+Table created with id = 15
+bustub> EXPLAIN (o,s) SELECT * FROM t1;
+=== OPTIMIZER ===
+SeqScan { table=t1 } | (t1.v1:INTEGER, t1.v2:VARCHAR)
+```
+
+##### Insert
+```
+bustub> EXPLAIN (o,s) INSERT INTO t1 VALUES (1, 'a'), (2, 'b');
+=== OPTIMIZER ===
+Insert { table_oid=15 } | (__bustub_internal.insert_rows:INTEGER)
+  Values { rows=2 } | (__values#0.0:INTEGER, __values#0.1:VARCHAR)
+```
+
+##### Delete
+```
+bustub> EXPLAIN (o,s) DELETE FROM t1;
+=== OPTIMIZER ===
+Delete { table_oid=15 } | (__bustub_internal.delete_rows:INTEGER)
+  Filter { predicate=true } | (t1.v1:INTEGER, t1.v2:VARCHAR)
+    SeqScan { table=t1 } | (t1.v1:INTEGER, t1.v2:VARCHAR)
+
+bustub> EXPLAIN (o,s) DELETE FROM t1 where v1 = 1;
+=== OPTIMIZER ===
+Delete { table_oid=15 } | (__bustub_internal.delete_rows:INTEGER)
+  Filter { predicate=#0.0=1 } | (t1.v1:INTEGER, t1.v2:VARCHAR)
+    SeqScan { table=t1 } | (t1.v1:INTEGER, t1.v2:VARCHAR)
+```
+
+
+##### IndexScan
+```
+bustub> CREATE TABLE t2(v3 int, v4 int);
+Table created with id = 16
+
+bustub> CREATE INDEX t2v3 ON t2(v3);
+Index created with id = 0
+
+bustub> EXPLAIN (o,s) SELECT * FROM t2 ORDER BY v3;
+=== OPTIMIZER ===
+IndexScan { index_oid=0 } | (t2.v3:INTEGER, t2.v4:INTEGER)
+```
+
+
+#### #2: Aggregation and Join Executors
+#### #3: Sort + Limit Executors and Top-N Optimization
+#### Leaderboard Task (Optional)
 
