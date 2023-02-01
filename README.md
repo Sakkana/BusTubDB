@@ -252,7 +252,11 @@ create index t1v2 on t1(v2);
 insert into t1 values (6, 0), (7, -10);
 ```
   
-这里建立了两个 index：`t1v1` 和 `t1v2`，日志中打印了以下执行 KeyFromTuple 时，传入的 `key_attrs` 的 size 为 1，并且名字恰恰是 v1 和 v2。
+这里建立了两个 index：`t1v1` 和 `t1v2`，日志中打印了以下执行 KeyFromTuple 时，\
+传入的 `key_attrs` 的 size 为 1，\
+并且名字恰恰是 v1 和 v2，\
+且 catalog->indexes_->IndexInfo->Index->IndexMetadata->key_attrs_ 里保存的 key_col 和 table_col 的映射，\
+打印出来也是 0 和 1。（因为 t1v1 在 v1 上建立索引，v1 是原表的第 0 列，因此 key_attrs 第一个元素是 0；t1v2 也同理）\
 
 #### #2: Aggregation and Join Executors
 #### #3: Sort + Limit Executors and Top-N Optimization
