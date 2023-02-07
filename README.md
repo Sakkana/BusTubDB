@@ -258,7 +258,24 @@ insert into t1 values (6, 0), (7, -10);
 且 catalog->indexes_->IndexInfo->Index->IndexMetadata->key_attrs_ 里保存的 key_col 和 table_col 的映射，\
 打印出来也是 0 和 1。（因为 t1v1 在 v1 上建立索引，v1 是原表的第 0 列，因此 key_attrs 第一个元素是 0；t1v2 也同理）\
 
-#### #2: Aggregation and Join Executors
-#### #3: Sort + Limit Executors and Top-N Optimization
-#### Leaderboard Task (Optional)
+#### #2: Aggregation and Join Executors (2.1， 2.4 - 2.6，2.2 去上海了，2.3 同学聚会，但是 debug 了一下 agg 的一些流程)
 
+##### aggregation
+
+##### NestedLoopJoin
+
+##### NestedIndexJoin
+
+#### #3: Sort + Limit Executors and Top-N Optimization (2.7)
+
+##### sort
+
+##### limit
+
+##### top-N
+
+#### Leaderboard Task (Optional)
+暂时没有做
+
+
+### lab 4 Concurrency Control
